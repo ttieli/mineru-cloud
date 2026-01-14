@@ -1,13 +1,22 @@
 {
   "name": "mineru-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MinerU Cloud OCR CLI Tool",
   "bin": {
-    "mineru": "./mineru_cli.py"
+    "mineru": "./bin/mineru"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "node scripts/install.js"
   },
+  "files": [
+    "mineru_cli.py",
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE",
+    "requirements.txt"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {}
