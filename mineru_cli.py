@@ -1070,6 +1070,17 @@ def print_help():
     print(help_text)
 
 
+def cmd_postinstall():
+    """Print post-installation message."""
+    print(color("\n===============================================================", Colors.GREEN))
+    print(color("  MinerU CLI Installed Successfully!", Colors.GREEN + Colors.BOLD))
+    print(color("===============================================================", Colors.GREEN))
+    print("\nTo get started, run:")
+    print(f"  {color('mineru config', Colors.CYAN)}")
+    print("\nOr simply run 'mineru <file>' and follow the prompts.")
+    print()
+    return 0
+
 def main():
     parser = argparse.ArgumentParser(
         description="MinerU Cloud OCR CLI",
@@ -1091,12 +1102,17 @@ def main():
     parser.add_argument('--download', action='store_true', help='Download result (for status command)')
     parser.add_argument('--show', action='store_true', help='Show current config (for config command)')
     parser.add_argument('--token', help='Set API token (for config command)')
+    parser.add_argument('--postinstall', action='store_true', help=argparse.SUPPRESS)
 
     # Positional arguments
     parser.add_argument('command', nargs='?', help='Command or input file/URL')
     parser.add_argument('inputs', nargs='*', help='Additional inputs')
 
     args = parser.parse_args()
+
+    # Handle internal postinstall flag
+    if args.postinstall:
+        return cmd_postinstall()
 
     # Show help
     if args.help or args.command is None:
