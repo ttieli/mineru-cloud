@@ -9,6 +9,7 @@ Usage:
     mineru <file_or_url>              # Parse a local file or URL
     mineru batch <files...>           # Batch parse multiple files
     mineru status <task_id>           # Query task status
+    mineru token [new_token]          # Update API token
     mineru config                     # Configure API token
     mineru diagnose                   # Check service status
 """
@@ -104,6 +105,37 @@ def set_token(token: str) -> None:
     save_config(config)
 
 
+def ensure_token() -> Optional[str]:
+    """Get token, or prompt user to enter it if missing."""
+    token = get_token()
+    if token:
+        return token
+
+    print(color("No API token found.", Colors.YELLOW))
+    return prompt_for_token()
+
+
+def prompt_for_token() -> Optional[str]:
+    """Interactive prompt for token."""
+    print(color("MinerU API Configuration", Colors.BOLD))
+    print()
+    print(f"Please enter your API token from: {color('https://mineru.net', Colors.BLUE)}")
+    print()
+    try:
+        token = input("Enter API token: ").strip()
+        if token:
+            set_token(token)
+            print(color("\nToken saved successfully.", Colors.GREEN))
+            print(f"Config file: {CONFIG_FILE}")
+            return token
+    except (KeyboardInterrupt, EOFError):
+        print()
+        return None
+    
+    print("No token provided.")
+    return None
+
+
 def get_default_output_dir() -> Path:
     """Get default output directory."""
     env_dir = os.environ.get("MINERU_OUTPUT_DIR")
@@ -118,6 +150,16 @@ def get_default_output_dir() -> Path:
 # =============================================================================
 # API Client
 # =============================================================================
+
+class APIError(Exception):
+    """API error exception."""
+    pass
+
+
+class AuthError(APIError):
+    """Authentication failed."""
+    pass
+
 
 class MinerUClient:
     """Client for MinerU cloud API."""
@@ -137,9 +179,18 @@ class MinerUClient:
         try:
             response = self.session.request(method, url, **kwargs)
             result = response.json()
-            if result.get("code") != 0:
+            code = result.get("code")
+            
+            if code != 0:
                 error_msg = result.get("msg", "Unknown error")
-                raise APIError(f"API Error: {error_msg} (code: {result.get('code')})")
+                
+                # Check for auth errors (codes may vary, adjust based on actual API)
+                # Assuming typical auth error codes or messages
+                if code == 401 or "auth" in error_msg.lower() or "token" in error_msg.lower():
+                    raise AuthError(f"Authentication failed: {error_msg}")
+                    
+                raise APIError(f"API Error: {error_msg} (code: {code})")
+                
             return result
         except requests.exceptions.RequestException as e:
             raise APIError(f"Request failed: {e}")
@@ -219,11 +270,6 @@ class MinerUClient:
         return opts
 
 
-class APIError(Exception):
-    """API error exception."""
-    pass
-
-
 # =============================================================================
 # Utility Functions
 # =============================================================================
@@ -262,7 +308,7 @@ def get_file_extension(path: Path) -> str:
 def generate_output_dir_name(base_name: str) -> str:
     """Generate output directory name with MinerU tag and timestamp.
 
-    Format: {base_name}_MinerU_{YYYYMMDD}_{HHMMSS}
+    Format: {base_name}_MinerU_{{YYYYMMDD}}_{{HHMMSS}}
     Example: document_MinerU_20260113_101500
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -343,12 +389,37 @@ def print_progress(state: str, extracted: int = 0, total: int = 0, start_time: s
 # Commands
 # =============================================================================
 
+def handle_auth_error(func):
+    """Decorator to handle AuthError and prompt for token update."""
+    def wrapper(args, *vargs, **kwargs):
+        while True:
+            try:
+                return func(args, *vargs, **kwargs)
+            except AuthError as e:
+                print(color(f"\nAuthorization Error: {e}", Colors.RED))
+                print("Your token may have expired or is invalid.")
+                
+                # Prompt to update
+                try:
+                    choice = input(f"Do you want to update your token now? [{color('Y', Colors.BOLD)}/n]: ").strip().lower()
+                except (KeyboardInterrupt, EOFError):
+                    choice = 'n'
+                
+                if choice not in ('n', 'no'):
+                    new_token = prompt_for_token()
+                    if new_token:
+                        print("Token updated. Retrying...")
+                        continue
+                
+                print("Aborted.")
+                return 1
+    return wrapper
+
+@handle_auth_error
 def cmd_parse(args):
     """Parse a single file or URL."""
-    token = get_token()
+    token = ensure_token()
     if not token:
-        print(color("Error: No API token configured.", Colors.RED))
-        print(f"Please run '{color('mineru config', Colors.CYAN)}' to set your API token.")
         return 1
 
     client = MinerUClient(token)
@@ -388,6 +459,7 @@ def cmd_parse(args):
             task_id = client.submit_url_task(url, **options)
             print(f"{color('Task ID:', Colors.CYAN)} {task_id}")
         except APIError as e:
+            if isinstance(e, AuthError): raise e
             print(color(str(e), Colors.RED))
             return 1
 
@@ -420,6 +492,7 @@ def cmd_parse(args):
             task_id = client.submit_url_task(extracted_url, **options)
             print(f"{color('Task ID:', Colors.CYAN)} {task_id}")
         except APIError as e:
+            if isinstance(e, AuthError): raise e
             print(color(str(e), Colors.RED))
             return 1
 
@@ -467,6 +540,7 @@ def cmd_parse(args):
         print(f"{color('Batch ID:', Colors.CYAN)} {batch_id}")
 
     except APIError as e:
+        if isinstance(e, AuthError): raise e
         print(color(str(e), Colors.RED))
         return 1
 
@@ -477,13 +551,11 @@ def cmd_parse(args):
         print(f"\nUse '{color(f'mineru status {batch_id}', Colors.CYAN)}' to check progress.")
         return 0
 
-
+@handle_auth_error
 def cmd_batch(args):
     """Batch parse multiple files or URLs."""
-    token = get_token()
+    token = ensure_token()
     if not token:
-        print(color("Error: No API token configured.", Colors.RED))
-        print(f"Please run '{color('mineru config', Colors.CYAN)}' to set your API token.")
         return 1
 
     client = MinerUClient(token)
@@ -540,6 +612,7 @@ def cmd_batch(args):
             batch_ids.append(("urls", batch_id, None))
             print(f"{color('Batch ID:', Colors.CYAN)} {batch_id}")
         except APIError as e:
+            if isinstance(e, AuthError): raise e
             print(color(str(e), Colors.RED))
 
     # Handle files
@@ -559,6 +632,7 @@ def cmd_batch(args):
 
             batch_ids.append(("files", batch_id, files))
         except APIError as e:
+            if isinstance(e, AuthError): raise e
             print(color(str(e), Colors.RED))
 
     if not batch_ids:
@@ -576,13 +650,11 @@ def cmd_batch(args):
             print(f"  {batch_type}: {batch_id}")
         return 0
 
-
+@handle_auth_error
 def cmd_status(args):
     """Check task/batch status."""
-    token = get_token()
+    token = ensure_token()
     if not token:
-        print(color("Error: No API token configured.", Colors.RED))
-        print(f"Please run '{color('mineru config', Colors.CYAN)}' to set your API token.")
         return 1
 
     client = MinerUClient(token)
@@ -607,7 +679,9 @@ def cmd_status(args):
                         if result.get("full_zip_url"):
                             download_result(result["full_zip_url"], output_dir, result.get("file_name", "result"))
             return 0
-        except APIError:
+        except APIError as e:
+            if isinstance(e, AuthError): raise e
+            # Ignore regular API errors when guessing batch ID
             pass
 
         # Try as single task ID
@@ -621,9 +695,23 @@ def cmd_status(args):
         return 0
 
     except APIError as e:
+        if isinstance(e, AuthError): raise e
         print(color(str(e), Colors.RED))
         return 1
 
+
+def cmd_token(args):
+    """Update API token manually."""
+    # If a token is provided as an argument, save it directly
+    if args.inputs:
+        new_token = args.inputs[0]
+        set_token(new_token)
+        print(color("Token updated successfully.", Colors.GREEN))
+        return 0
+    
+    # Otherwise, use the interactive prompt
+    prompt_for_token()
+    return 0
 
 def cmd_config(args):
     """Configure API token."""
@@ -645,19 +733,8 @@ def cmd_config(args):
         print(color("Token saved successfully.", Colors.GREEN))
         return 0
 
-    # Interactive mode
-    print(color("MinerU API Configuration", Colors.BOLD))
-    print()
-    print("Get your API token from: https://mineru.net")
-    print()
-    token = input("Enter API token: ").strip()
-    if token:
-        set_token(token)
-        print(color("\nToken saved successfully.", Colors.GREEN))
-        print(f"Config file: {CONFIG_FILE}")
-    else:
-        print("No token provided.")
-
+    # Use shared prompt
+    prompt_for_token()
     return 0
 
 
@@ -694,7 +771,9 @@ def cmd_diagnose(args):
             try:
                 client.get_task_status("test-invalid-id")
             except APIError as e:
-                if "找不到任务" in str(e) or "-60012" in str(e):
+                if isinstance(e, AuthError):
+                    print(f"   {color('Authentication:', Colors.RED)} invalid token")
+                elif "找不到任务" in str(e) or "-60012" in str(e):
                     print(f"   {color('Authentication:', Colors.GREEN)} valid")
                 else:
                     print(f"   {color('Authentication:', Colors.YELLOW)} {e}")
@@ -750,6 +829,10 @@ def wait_for_task(client: MinerUClient, task_id: str, output_dir: Path, timeout:
                 return 1
 
         except APIError as e:
+            # If wait loop hits an AuthError, we should probably stop waiting and let the main handler catch it
+            # But main handler has already started the loop.
+            # Ideally, wait_for_task should also propagate AuthError to the decorator.
+            if isinstance(e, AuthError): raise e
             print(color(f"\n{e}", Colors.RED))
 
         time.sleep(5)
@@ -789,11 +872,11 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
                 extracted = progress.get("extracted_pages", 0)
                 total_pages = progress.get("total_pages", 0)
                 if total_pages > 0:
-                    print(f"\rProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done)", end="", flush=True)
+                    print(f"\rProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done)    ", end="", flush=True)
                 else:
-                    print(f"\rProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
+                    print(f"\rProgress: {done_count}/{total} done, {failed_count} failed    ", end="", flush=True)
             else:
-                print(f"\rProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
+                print(f"\rProgress: {done_count}/{total} done, {failed_count} failed    ", end="", flush=True)
 
             all_finished = all(r.get("state") in ("done", "failed") for r in results)
             if all_finished:
@@ -816,6 +899,7 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
                 return 0 if failed_count == 0 else 1
 
         except APIError as e:
+            if isinstance(e, AuthError): raise e
             print(color(f"\n{e}", Colors.RED))
 
         time.sleep(5)
@@ -947,6 +1031,7 @@ def print_help():
   mineru <file_or_url>              Parse a local file or URL
   mineru batch <files...>           Batch parse multiple files/URLs
   mineru status <task_id>           Query task status
+  mineru token [new_token]          Update API token
   mineru config                     Configure API token
   mineru diagnose                   Check service status
 
@@ -1023,6 +1108,8 @@ def main():
 
     if cmd == 'config':
         return cmd_config(args)
+    elif cmd == 'token':
+        return cmd_token(args)
     elif cmd == 'diagnose':
         return cmd_diagnose(args)
     elif cmd == 'status':
