@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "postinstall": "node scripts/install.js"
+    "postinstall": "python3 scripts/postinstall.py"
   },
   "author": "",
   "license": "MIT",
