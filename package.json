@@ -11,8 +11,8 @@
   },
   "files": [
     "mineru_cli.py",
-    "bin/",
-    "scripts/",
+    "bin",
+    "scripts",
     "README.md",
     "LICENSE",
     "requirements.txt"
