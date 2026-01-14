@@ -44,9 +44,8 @@ Requires Python 3.6+.
 If you prefer managing tools via npm:
 
 ```bash
-npm install -g mineru-cli
-# Or from local source
-npm install -g .
+# Install directly from GitHub
+npm install -g git+https://github.com/ttieli/mineru-cloud.git
 ```
 
 *Note: This still requires Python 3 to be installed on your system.*
@@ -144,9 +143,8 @@ mineru status <task_id>
 如果您习惯使用 npm 管理工具：
 
 ```bash
-npm install -g mineru-cli
-# 或者从本地源码安装
-npm install -g .
+# 直接从 GitHub 安装
+npm install -g git+https://github.com/ttieli/mineru-cloud.git
 ```
 
 *注意: 无论哪种方式，您的系统都需要预先安装 Python 3。*
