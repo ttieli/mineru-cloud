@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Locate the python script relative to this wrapper
+// In installed package: /lib/node_modules/mineru-cli/bin/mineru -> ../mineru_cli.py
+const scriptPath = path.join(__dirname, '..', 'mineru_cli.py');
+const args = process.argv.slice(2);
+
+// Spawn python3 process
+const child = spawn('python3', [scriptPath, ...args], { stdio: 'inherit' });
+
+child.on('error', (err) => {
+  if (err.code === 'ENOENT') {
+    console.error('\x1b[31mError: Python 3 not found. Please install Python 3 to use mineru-cli.\x1b[0m');
+  } else {
+    console.error('\x1b[31mError launching mineru-cli:\x1b[0m', err);
+  }
+  process.exit(1);
+});
+
+child.on('exit', (code) => {
+  process.exit(code);
+});

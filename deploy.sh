@@ -2,9 +2,12 @@
 # Deploy the current development version of mineru_cli.py to the global stable directory
 
 SRC="mineru_cli.py"
-DEST="$HOME/.local/share/mineru/mineru_cli.py"
+PREFIX="${PREFIX:-/usr/local}"
+DEST="$PREFIX/share/mineru/mineru_cli.py"
 
 echo "Deploying $SRC to $DEST ..."
+
+mkdir -p "$PREFIX/share/mineru"
 
 # Simple syntax check
 python3 -m py_compile "$SRC"
