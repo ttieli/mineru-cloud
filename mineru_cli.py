@@ -816,6 +816,7 @@ def wait_for_task(client: MinerUClient, task_id: str, output_dir: Path, timeout:
             total = progress.get("total_pages", 0)
 
             print_progress(state, extracted, total)
+            print("\033[K", end="", flush=True)
 
             if state == "done":
                 print()
@@ -872,11 +873,11 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
                 extracted = progress.get("extracted_pages", 0)
                 total_pages = progress.get("total_pages", 0)
                 if total_pages > 0:
-                    print(f"\rProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done)    ", end="", flush=True)
+                    print(f"\r\033[KProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done)", end="", flush=True)
                 else:
-                    print(f"\rProgress: {done_count}/{total} done, {failed_count} failed    ", end="", flush=True)
+                    print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
             else:
-                print(f"\rProgress: {done_count}/{total} done, {failed_count} failed    ", end="", flush=True)
+                print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
 
             all_finished = all(r.get("state") in ("done", "failed") for r in results)
             if all_finished:
