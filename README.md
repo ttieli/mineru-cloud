@@ -16,8 +16,9 @@ A command-line interface for the [MinerU](https://mineru.net) Cloud OCR parsing 
 *   **Formula & Table Recognition:** Advanced options to toggle specific recognition features.
 *   **Persistent Configuration:** Token configuration survives system reboots.
 *   **Result Management:** Automatically downloads and extracts results.
+*   **Live Feedback:** Spinner animation and elapsed time display for long-running tasks.
 
-### Installation
+## Installation
 
 #### Option 1: Python (Recommended)
 
@@ -115,6 +116,7 @@ mineru status <task_id>
 *   **公式与表格识别:** 提供选项以开启或关闭特定识别功能。
 *   **配置持久化:** Token 配置自动保存，重启依然有效。
 *   **结果管理:** 自动下载并解压解析结果。
+*   **实时反馈:** 针对耗时任务提供动态加载动画和用时统计。
 
 ### 安装指南
 
