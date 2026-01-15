@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="mineru-cli",
-    version="0.1.1",
+    version="0.1.2",
     description="MinerU Cloud OCR CLI Tool",
     author="Your Name",
     py_modules=["mineru_cli"],
