@@ -839,11 +839,22 @@ def wait_for_task(client: MinerUClient, task_id: str, output_dir: Path, timeout:
         except APIError as e:
             # If wait loop hits an AuthError, we should probably stop waiting and let the main handler catch it
             # But main handler has already started the loop.
-            # Ideally, wait_for_task should also propagate AuthError to the decorator.
             if isinstance(e, AuthError): raise e
             print(color(f"\n{e}", Colors.RED))
 
-        time.sleep(5)
+        # Smooth UI update loop (poll every 0.1s, API check every 5s)
+        next_poll = time.time() + 5
+        while time.time() < next_poll:
+            elapsed = time.time() - start
+            spin_char = spinner[int(time.time() * 10) % 4]  # Faster spin
+            elapsed_str = f"({int(elapsed)}s)"
+            
+            # Reprint status line with updated spinner/time
+            print(f"\r{color(label, c)} {spin_char} {elapsed_str}", end="", flush=True)
+            if state == "running" and total > 0:
+                print(f"\r{color(label, c)} [{bar}] {pct}% ({extracted}/{total} pages) {spin_char} {elapsed_str}", end="", flush=True)
+            
+            time.sleep(0.1)
 
 
 def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeout: int, expected_stem: str = None) -> int:
@@ -915,7 +926,20 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
             if isinstance(e, AuthError): raise e
             print(color(f"\n{e}", Colors.RED))
 
-        time.sleep(5)
+        # Smooth UI update loop (poll every 0.1s, API check every 5s)
+        next_poll = time.time() + 5
+        while time.time() < next_poll:
+            elapsed = time.time() - start
+            spin_char = spinner[int(time.time() * 10) % 4]  # Faster spin
+            elapsed_str = f"({int(elapsed)}s)"
+            
+            # Reprint batch status line
+            if running_tasks and total_pages > 0:
+                print(f"\r\033[KProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done) {spin_char} {elapsed_str}", end="", flush=True)
+            else:
+                print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed {spin_char} {elapsed_str}", end="", flush=True)
+            
+            time.sleep(0.1)
 
 
 def print_task_status(status: Dict):
