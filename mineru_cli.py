@@ -798,6 +798,17 @@ def wait_for_task(client: MinerUClient, task_id: str, output_dir: Path, timeout:
             extracted = progress.get("extracted_pages", 0)
             total = progress.get("total_pages", 0)
 
+            # Map state to label/color
+            states_display = {
+                "pending": (Colors.YELLOW, "Queued"),
+                "running": (Colors.BLUE, "Processing"),
+                "converting": (Colors.CYAN, "Converting"),
+                "done": (Colors.GREEN, "Completed"),
+                "failed": (Colors.RED, "Failed"),
+                "waiting-file": (Colors.DIM, "Waiting for upload"),
+            }
+            c, label = states_display.get(state, (Colors.DIM, state))
+
             # Spinner animation
             spinner = ['|', '/', '-', '\\']
             spin_char = spinner[int(time.time() * 2) % 4]
