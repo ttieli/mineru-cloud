@@ -102,6 +102,22 @@ mineru batch *.pdf
 mineru status <task_id>
 ```
 
+### Troubleshooting
+
+**1. "zsh: event not found" when using URLs with `!`**
+Use single quotes instead of double quotes for URLs containing special characters:
+```bash
+mineru 'http://example.com/id!123'
+```
+
+**2. Updates not reflecting (No Spinner)**
+If you updated via npm but don't see the new UI features, clear the cache and reinstall:
+```bash
+npm uninstall -g mineru-cli
+rm -rf /usr/local/lib/node_modules/mineru-cli
+npm install -g git+https://github.com/ttieli/mineru-cloud.git
+```
+
 ---
 
 <a name="中文"></a>
@@ -200,6 +216,22 @@ mineru batch *.pdf
 #### 查看状态
 ```bash
 mineru status <task_id>
+```
+
+### 常见问题排查
+
+**1. URL 包含 `!` 报错 "zsh: event not found"**
+请使用单引号包裹 URL，防止 Shell 转义：
+```bash
+mineru 'http://example.com/id!123'
+```
+
+**2. 更新后未看到新功能 (无转圈动画)**
+如果 npm 更新后仍是旧版界面，请尝试彻底清理残留并重装：
+```bash
+npm uninstall -g mineru-cli
+rm -rf /usr/local/lib/node_modules/mineru-cli
+npm install -g git+https://github.com/ttieli/mineru-cloud.git
 ```
 
 ## License
