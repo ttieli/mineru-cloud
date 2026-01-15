@@ -364,25 +364,8 @@ def format_time(seconds: float) -> str:
 
 
 def print_progress(state: str, extracted: int = 0, total: int = 0, start_time: str = ""):
-    """Print progress bar."""
-    states = {
-        "pending": (Colors.YELLOW, "Queued"),
-        "running": (Colors.BLUE, "Processing"),
-        "converting": (Colors.CYAN, "Converting"),
-        "done": (Colors.GREEN, "Completed"),
-        "failed": (Colors.RED, "Failed"),
-        "waiting-file": (Colors.DIM, "Waiting for upload"),
-    }
-    c, label = states.get(state, (Colors.DIM, state))
-
-    if state == "running" and total > 0:
-        pct = int((extracted / total) * 100)
-        bar_len = 30
-        filled = int(bar_len * extracted / total)
-        bar = "=" * filled + ">" + " " * (bar_len - filled - 1)
-        print(f"\r{color(label, c)} [{bar}] {pct}% ({extracted}/{total} pages)", end="", flush=True)
-    else:
-        print(f"\r{color(label, c)}", end="", flush=True)
+    """Print progress bar (Legacy, kept for reference)."""
+    pass
 
 
 # =============================================================================
@@ -815,7 +798,20 @@ def wait_for_task(client: MinerUClient, task_id: str, output_dir: Path, timeout:
             extracted = progress.get("extracted_pages", 0)
             total = progress.get("total_pages", 0)
 
-            print_progress(state, extracted, total)
+            # Spinner animation
+            spinner = ['|', '/', '-', '\\']
+            spin_char = spinner[int(time.time() * 2) % 4]
+            elapsed_str = f"({int(elapsed)}s)"
+
+            print(f"\r{color(label, c)} {spin_char} {elapsed_str}", end="", flush=True)
+
+            if state == "running" and total > 0:
+                pct = int((extracted / total) * 100)
+                bar_len = 30
+                filled = int(bar_len * extracted / total)
+                bar = "=" * filled + ">" + " " * (bar_len - filled - 1)
+                print(f"\r{color(label, c)} [{bar}] {pct}% ({extracted}/{total} pages) {spin_char} {elapsed_str}", end="", flush=True)
+
             print("\033[K", end="", flush=True)
 
             if state == "done":
@@ -866,6 +862,11 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
             failed_count = sum(1 for r in results if r.get("state") == "failed")
             total = len(results)
 
+            # Spinner animation
+            spinner = ['|', '/', '-', '\\']
+            spin_char = spinner[int(time.time() * 2) % 4]
+            elapsed_str = f"({int(elapsed)}s)"
+
             # Show progress with running task details
             running_tasks = [r for r in results if r.get("state") == "running"]
             if running_tasks:
@@ -873,11 +874,11 @@ def wait_for_batch(client: MinerUClient, batch_id: str, output_dir: Path, timeou
                 extracted = progress.get("extracted_pages", 0)
                 total_pages = progress.get("total_pages", 0)
                 if total_pages > 0:
-                    print(f"\r\033[KProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done)", end="", flush=True)
+                    print(f"\r\033[KProcessing: {extracted}/{total_pages} pages ({done_count}/{total} files done) {spin_char} {elapsed_str}", end="", flush=True)
                 else:
-                    print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
+                    print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed {spin_char} {elapsed_str}", end="", flush=True)
             else:
-                print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed", end="", flush=True)
+                print(f"\r\033[KProgress: {done_count}/{total} done, {failed_count} failed {spin_char} {elapsed_str}", end="", flush=True)
 
             all_finished = all(r.get("state") in ("done", "failed") for r in results)
             if all_finished:
